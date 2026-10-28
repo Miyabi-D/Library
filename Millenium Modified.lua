@@ -511,6 +511,90 @@ function library:unload_menu()
 end
 --
 
+-- Icons
+local icons = nil
+local icons_loaded = false
+
+local function is_icon_url(name)
+	return string.find(name, "^rbxassetid://") or string.find(name, "^rbxasset://") or string.find(name, "^http")
+end
+
+local function load_icons()
+	if icons_loaded then
+		return icons
+	end
+
+	icons_loaded = true
+
+	local success, result = pcall(function()
+		return loadstring(game:HttpGet("https://raw.githubusercontent.com/notpoiu/Molto/refs/heads/main/source.lua"))()
+	end)
+
+	if not (success and result) then
+		return
+	end
+
+	icons = result
+	pcall(icons.SetProvider, icons, "lucide")
+
+	return icons
+end
+
+function library:icon(name)
+	if not name or is_icon_url(name) then
+		return
+	end
+
+	local module = load_icons()
+
+	if not module then
+		return
+	end
+
+	local success, asset = pcall(module.GetAsset, name)
+
+	if not success then
+		return
+	end
+
+	return asset
+end
+
+function library:icons()
+	local module = load_icons()
+
+	if not module then
+		return {}
+	end
+
+	local success, list = pcall(module.GetIcons)
+
+	if not success then
+		return {}
+	end
+
+	return list
+end
+
+function library:apply_icon(image, name)
+	if not name then
+		return image
+	end
+
+	local asset = library:icon(name)
+
+	if asset then
+		image.Image = asset.Url
+		image.ImageRectOffset = asset.ImageRectOffset
+		image.ImageRectSize = asset.ImageRectSize
+		image.ScaleType = Enum.ScaleType.Fit
+	elseif is_icon_url(name) then
+		image.Image = name
+	end
+
+	return image
+end
+
 -- Library element functions
 function library:window(properties)
 	local cfg = {
@@ -820,6 +904,7 @@ function library:tab(properties)
 			BackgroundColor3 = rgb(255, 255, 255),
 		})
 		library:apply_theme(items["icon"], "accent", "ImageColor3")
+		library:apply_icon(items["icon"], cfg.icon)
 
 		items["name"] = library:create("TextLabel", {
 			FontFace = fonts.font,
@@ -1294,6 +1379,7 @@ function library:section(properties)
 			BackgroundColor3 = rgb(255, 255, 255),
 		})
 		library:apply_theme(items["Icon"], "accent", "ImageColor3")
+		library:apply_icon(items["Icon"], cfg.icon)
 
 		items["section_title"] = library:create("TextLabel", {
 			FontFace = fonts.font,
