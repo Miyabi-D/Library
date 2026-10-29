@@ -513,24 +513,25 @@ end
 
 -- Icons
 local icons = nil
-local icons_loaded = false
+local icons_tried = false
 
 local function is_icon_url(name)
 	return string.find(name, "^rbxassetid://") or string.find(name, "^rbxasset://") or string.find(name, "^http")
 end
 
 local function load_icons()
-	if icons_loaded then
+	if icons_tried then
 		return icons
 	end
 
-	icons_loaded = true
+	icons_tried = true
 
 	local success, result = pcall(function()
 		return loadstring(game:HttpGet("https://raw.githubusercontent.com/notpoiu/Molto/refs/heads/main/source.lua"))()
 	end)
 
 	if not (success and result) then
+		warn("[milenium] icon module failed to load - icons will be blank, check your connection and re-execute")
 		return
 	end
 
@@ -587,10 +588,15 @@ function library:apply_icon(image, name)
 		image.Image = asset.Url
 		image.ImageRectOffset = asset.ImageRectOffset
 		image.ImageRectSize = asset.ImageRectSize
-		image.ScaleType = Enum.ScaleType.Fit
 	elseif is_icon_url(name) then
 		image.Image = name
+		image.ImageRectOffset = Vector2.zero
+		image.ImageRectSize = Vector2.zero
+	else
+		image.Image = ""
 	end
+
+	image.ScaleType = Enum.ScaleType.Fit
 
 	return image
 end
@@ -895,11 +901,11 @@ function library:tab(properties)
 			BorderColor3 = rgb(0, 0, 0),
 			Parent = items["button"],
 			AnchorPoint = vec2(0, 0.5),
-			Image = "http://www.roblox.com/asset/?id=6034767608",
+			Image = "",
 			BackgroundTransparency = 1,
-			Position = dim2(0, 10, 0.5, -1),
+			Position = dim2(0, 10, 0.5, 0),
 			Name = "\0",
-			Size = dim2(0, 20, 0, 20),
+			Size = dim2(0, 24, 0, 24),
 			BorderSizePixel = 0,
 			BackgroundColor3 = rgb(255, 255, 255),
 		})
@@ -1370,11 +1376,11 @@ function library:section(properties)
 			BorderColor3 = rgb(0, 0, 0),
 			Parent = items["button"],
 			AnchorPoint = vec2(0, 0.5),
-			Image = cfg.icon,
+			Image = "",
 			BackgroundTransparency = 1,
 			Position = dim2(0, 10, 0.5, 0),
 			Name = "\0",
-			Size = dim2(0, 22, 0, 22),
+			Size = dim2(0, 24, 0, 24),
 			BorderSizePixel = 0,
 			BackgroundColor3 = rgb(255, 255, 255),
 		})
@@ -3852,9 +3858,35 @@ function library:settings(options)
 		})
 	end
 
+	local follow_connection
+
+	local function place_menu()
+		items["outline"].Position = dim_offset(items["tick"].AbsolutePosition.X, items["tick"].AbsolutePosition.Y + 90)
+	end
+
 	function cfg.set_visible(bool)
 		library:tween(items["outline"], { Size = dim_offset(bool and 240 or 0, 0) })
-		items["outline"].Position = dim_offset(items["tick"].AbsolutePosition.X, items["tick"].AbsolutePosition.Y + 90)
+
+		if follow_connection then
+			follow_connection:Disconnect()
+			follow_connection = nil
+		end
+
+		place_menu()
+
+		if bool then
+			follow_connection = run.RenderStepped:Connect(function()
+				if not items["tick"].Parent then
+					follow_connection:Disconnect()
+					follow_connection = nil
+
+					return
+				end
+
+				place_menu()
+			end)
+		end
+
 		library:close_element(cfg)
 	end
 
